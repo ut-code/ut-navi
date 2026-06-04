@@ -1,0 +1,5 @@
+ pre-commit:
+   parallel: true
+   jobs:
+     - run: bun biome --fix {staged_files}
+       glob: "*.{js,ts,svelte}"
