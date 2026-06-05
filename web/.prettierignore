@@ -1,0 +1,10 @@
+# SvelteKit / ビルド生成物
+.svelte-kit
+build
+node_modules
+
+# 機械生成データ (Overpass から焼いた巨大 GeoJSON。整形しない)
+static/data
+
+# ロックファイル
+bun.lock

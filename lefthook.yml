@@ -1,8 +1,13 @@
 pre-commit:
   parallel: true
   jobs:
-    # biome は `--fix` 単体フラグを受けない。check サブコマンド経由で lint+format を自動修正し、
-    # 直った結果をコミットに含めるため stage_fixed で再ステージする。
-    - run: bun biome check --write {staged_files}
+    - name: prettier
+      root: "web/"
+      glob: "*.{js,ts,svelte,css,json,md,html}"
+      run: bun prettier --write {staged_files}
+      stage_fixed: true
+    - name: eslint
+      root: "web/"
       glob: "*.{js,ts,svelte}"
+      run: bun eslint --fix {staged_files}
       stage_fixed: true

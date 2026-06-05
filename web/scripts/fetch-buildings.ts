@@ -19,10 +19,7 @@ const ENDPOINTS = [
 	"https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 const CAMPUS_RELATION = 5414648; // 東京大学本郷キャンパス
-const OUT_DIR = resolve(
-	dirname(fileURLToPath(import.meta.url)),
-	"../static/data",
-);
+const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../static/data");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -38,10 +35,7 @@ async function overpass(query: string): Promise<unknown> {
 				headers: { "User-Agent": "ut-navi/0.1 (campus map; dev)" },
 				body: new URLSearchParams({ data: query }),
 			});
-			if (!res.ok)
-				throw new Error(
-					`Overpass ${res.status}: ${(await res.text()).slice(0, 200)}`,
-				);
+			if (!res.ok) throw new Error(`Overpass ${res.status}: ${(await res.text()).slice(0, 200)}`);
 			return await res.json();
 		} catch (e) {
 			lastErr = e;
@@ -60,9 +54,7 @@ async function main() {
 	);
 
 	console.log("fetching campus boundary...");
-	const boundary = await overpass(
-		`[out:json][timeout:60];rel(${CAMPUS_RELATION});out geom;`,
-	);
+	const boundary = await overpass(`[out:json][timeout:60];rel(${CAMPUS_RELATION});out geom;`);
 
 	console.log("fetching roads/paths inside Hongo campus...");
 	// highway=* は車道だけでなく footway/path/steps も含む。構内は歩行者動線が主役
@@ -78,28 +70,16 @@ async function main() {
 
 	// 建物はポリゴンのみ残す (ノード等を除外)
 	buildingsGeo.features = buildingsGeo.features.filter(
-		(f) =>
-			f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon",
+		(f) => f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon",
 	);
 	// 道路はラインのみ残す
 	roadsGeo.features = roadsGeo.features.filter(
-		(f) =>
-			f.geometry?.type === "LineString" ||
-			f.geometry?.type === "MultiLineString",
+		(f) => f.geometry?.type === "LineString" || f.geometry?.type === "MultiLineString",
 	);
 
-	await writeFile(
-		resolve(OUT_DIR, "hongo-buildings.geojson"),
-		`${JSON.stringify(buildingsGeo)}\n`,
-	);
-	await writeFile(
-		resolve(OUT_DIR, "hongo-boundary.geojson"),
-		`${JSON.stringify(boundaryGeo)}\n`,
-	);
-	await writeFile(
-		resolve(OUT_DIR, "hongo-roads.geojson"),
-		`${JSON.stringify(roadsGeo)}\n`,
-	);
+	await writeFile(resolve(OUT_DIR, "hongo-buildings.geojson"), `${JSON.stringify(buildingsGeo)}\n`);
+	await writeFile(resolve(OUT_DIR, "hongo-boundary.geojson"), `${JSON.stringify(boundaryGeo)}\n`);
+	await writeFile(resolve(OUT_DIR, "hongo-roads.geojson"), `${JSON.stringify(roadsGeo)}\n`);
 
 	const named = buildingsGeo.features.filter((f) => f.properties?.name).length;
 	console.log(

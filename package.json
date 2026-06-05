@@ -6,11 +6,13 @@
     "typescript": "^5"
   },
   "scripts": {
-    "dev": "bun --parallel dev:web",
-    "dev:web": "cd web; bun run dev"
+    "launch": "cd web; bun dev",
+    "check": "bun run typecheck && bun run lint",
+    "typecheck": "cd web; bun run typecheck",
+    "lint": "cd web; bun run lint",
+    "autofix": "cd web; bun run autofix"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
     "lefthook": "^2.1.9"
   }
 }
