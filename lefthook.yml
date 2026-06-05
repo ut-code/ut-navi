@@ -1,5 +1,8 @@
- pre-commit:
-   parallel: true
-   jobs:
-     - run: bun biome --fix {staged_files}
-       glob: "*.{js,ts,svelte}"
+pre-commit:
+  parallel: true
+  jobs:
+    # biome は `--fix` 単体フラグを受けない。check サブコマンド経由で lint+format を自動修正し、
+    # 直った結果をコミットに含めるため stage_fixed で再ステージする。
+    - run: bun biome check --write {staged_files}
+      glob: "*.{js,ts,svelte}"
+      stage_fixed: true

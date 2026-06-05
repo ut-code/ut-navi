@@ -1,0 +1,9 @@
+{
+	// scripts/ は SvelteKit の生成 tsconfig の include 外なので型解決から漏れる。
+	// ここで node 実行スクリプトとして個別に型付けする。
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"types": ["node"]
+	},
+	"include": ["./**/*.ts"]
+}

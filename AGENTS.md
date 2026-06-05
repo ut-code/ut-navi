@@ -5,3 +5,7 @@
 # README
 
 @./README.md
+
+# Coding Rules
+
+- No Assertion. No `as` or `!`. Use runtime type check like valibot or `if typeof ...` instead.
