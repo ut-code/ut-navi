@@ -9,9 +9,9 @@
 		CAMPUS_CENTER,
 		OSM_ATTRIBUTION,
 		ZOOM,
-	} from "./campus";
+	} from "./campus.ts";
 	import FloorView from "./FloorView.svelte";
-	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors";
+	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors.ts";
 
 	type Selected = {
 		id: string;

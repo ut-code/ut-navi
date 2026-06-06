@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BuildingFloors } from "$lib/data/floors";
+	import type { BuildingFloors } from "$lib/data/floors.ts";
 
 	type Props = {
 		data: BuildingFloors;

@@ -1,7 +1,11 @@
 {
 	"extends": ["../tsconfig.base.json", "./.svelte-kit/tsconfig.json"],
 	"compilerOptions": {
-		"rewriteRelativeImportExtensions": true,
+		// ビルドは Vite が行い tsc は emit しない (noEmit) ので、拡張子を .ts→.js に
+		// 書き換える rewriteRelativeImportExtensions ではなく、.ts 拡張子をそのまま
+		// 許可する allowImportingTsExtensions を使う。これなら $lib 等の非相対パスでも
+		// .ts 付きで import でき、拡張子の付け方を統一できる。
+		"allowImportingTsExtensions": true,
 		"allowJs": true,
 		"checkJs": true,
 		"esModuleInterop": true,

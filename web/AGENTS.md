@@ -37,7 +37,8 @@
 - lint/format は **prettier + eslint**。biome は `.svelte` の markup 内での変数/import 使用を追跡できず `noUnusedVariables` 等を誤検知するため**不採用** (再導入しないこと)
 - インデントはタブ、文字列はダブルクォート (`.prettierrc`)
 - `scripts/` は svelte-kit 生成 tsconfig の include 外 → `scripts/tsconfig.json` で個別に型付けしている
-- import は拡張子付き。 `import { stuff } from "./stuff.ts"` (ただし `$lib` エイリアス等の非相対パスは `.ts` を付けると TS エラーになるので付けない)
+- import は拡張子付き (相対・`$lib` 両方)。 `import { stuff } from "$lib/x/stuff.ts"`
+  - これを成立させるため tsconfig は `rewriteRelativeImportExtensions` ではなく `allowImportingTsExtensions` を使う (前者は相対パスしか書き換えず `$lib` の `.ts` がエラーになる)。emit は Vite が担うので tsc 側で書き換える必要はない
 
 ## 階層図・部屋データ (`src/lib/data/floors.ts`)
 
