@@ -37,6 +37,7 @@
 - lint/format は **prettier + eslint**。biome は `.svelte` の markup 内での変数/import 使用を追跡できず `noUnusedVariables` 等を誤検知するため**不採用** (再導入しないこと)
 - インデントはタブ、文字列はダブルクォート (`.prettierrc`)
 - `scripts/` は svelte-kit 生成 tsconfig の include 外 → `scripts/tsconfig.json` で個別に型付けしている
+- import は拡張子付き。 `import { stuff } from "./stuff.ts"`
 
 ## UI
 

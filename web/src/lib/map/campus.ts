@@ -18,10 +18,14 @@ export const CAMPUS_BEARING = 77;
 /**
  * パン範囲の制限。キャンパス外へ大きくはみ出さないよう余白付きで囲う。
  * MapLibre は [[west, south], [east, north]]。
+ * 地図を 77° 回転しているため、回転した画面矩形の対角が axis-aligned な
+ * この箱に早く引っかかり、縮小時に端 (上端) までパンできなくなる。
+ * それを避けるためキャンパス実寸 (CAMPUS_FIT_BOUNDS) の約2倍まで余白を取る。
+ * 背景は単色なので外側に余白が見えても問題ない。
  */
 export const CAMPUS_BOUNDS: LngLatBoundsLike = [
-	[139.756, 35.7055],
-	[139.7705, 35.718],
+	[139.754, 35.704],
+	[139.773, 35.72],
 ];
 
 export const ZOOM: { min: number; max: number; initial: number } = {
@@ -54,8 +58,9 @@ export const BASE_STYLE: StyleSpecification = {
 	layers: [
 		{
 			id: "background",
+			// キャンパスの緑地を思わせる柔らかいミントグリーン。学生向けに親しみやすく
 			type: "background",
-			paint: { "background-color": "#eef1f5" },
+			paint: { "background-color": "#e7f1e8" },
 		},
 	],
 };
