@@ -37,7 +37,16 @@
 - lint/format は **prettier + eslint**。biome は `.svelte` の markup 内での変数/import 使用を追跡できず `noUnusedVariables` 等を誤検知するため**不採用** (再導入しないこと)
 - インデントはタブ、文字列はダブルクォート (`.prettierrc`)
 - `scripts/` は svelte-kit 生成 tsconfig の include 外 → `scripts/tsconfig.json` で個別に型付けしている
-- import は拡張子付き。 `import { stuff } from "./stuff.ts"`
+- import は拡張子付き。 `import { stuff } from "./stuff.ts"` (ただし `$lib` エイリアス等の非相対パスは `.ts` を付けると TS エラーになるので付けない)
+
+## 階層図・部屋データ (`src/lib/data/floors.ts`)
+
+建物の階数→部屋を持つ構造データ。`FLOOR_DATA` を建物 OSM id でキーする。
+
+- 現状は **工学部2号館 (`relation/9693129`) のみ**。データ・フロア図画像 (`static/data/floors/eng2/*.png`) は JSME 2022 年次大会の会場案内から拝借した**暫定**。本来の構内データに差し替える前提
+- 部屋に建物内座標はない → 地図上での部屋ハイライトは不可。`FloorView.svelte` がフロア図画像 + 部屋リストを出すだけ
+- 部屋検索は `searchRooms()` (号室番号/部屋名/会場記号/建物名にマッチ)。`MapView` の検索バーが建物検索と統合し、部屋ヒット→親建物へ flyTo + 該当階で `FloorView` を開く
+- 建物に階層図があるかは `hasFloors(id)`。情報カードに「階層図を見る」ボタンが出る
 
 ## UI
 

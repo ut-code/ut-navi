@@ -10,6 +10,8 @@
 		OSM_ATTRIBUTION,
 		ZOOM,
 	} from "./campus";
+	import FloorView from "./FloorView.svelte";
+	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors";
 
 	type Selected = {
 		id: string;
@@ -31,7 +33,7 @@
 	let map: maplibregl.Map | undefined;
 	let selected = $state<Selected | null>(null);
 
-	// 建物名検索
+	// 建物名・部屋名検索
 	let buildings = $state<Building[]>([]);
 	let query = $state("");
 	const results = $derived.by(() => {
@@ -39,8 +41,17 @@
 		if (q === "") return [];
 		return buildings
 			.filter((b) => b.name.toLowerCase().includes(q) || (b.en?.toLowerCase().includes(q) ?? false))
-			.slice(0, 8);
+			.slice(0, 6);
 	});
+	const roomResults = $derived(searchRooms(query, 6));
+
+	// 階層図ビュー (部屋データを持つ建物のみ)
+	let floorBuildingId = $state<string | null>(null);
+	let focusLevel = $state<number | null>(null);
+	let focusRoom = $state<string | null>(null);
+	const floorData = $derived(
+		floorBuildingId === null ? null : (FLOOR_DATA[floorBuildingId] ?? null),
+	);
 
 	/** GeoJSON プロパティは unknown。文字列のときだけ取り出す (assertion 不可なので実行時判定) */
 	function asString(v: unknown): string | null {
@@ -103,8 +114,21 @@
 		map?.setFilter("campus-buildings-selected-fill", ["==", ["get", "id"], id]);
 	}
 
+	function closeFloors() {
+		floorBuildingId = null;
+		focusLevel = null;
+		focusRoom = null;
+	}
+
+	function openFloors(buildingId: string, level: number | null, room: string | null) {
+		floorBuildingId = buildingId;
+		focusLevel = level;
+		focusRoom = room;
+	}
+
 	function clearSelection() {
 		selected = null;
+		closeFloors();
 		// 何にもマッチしない式に戻してハイライトを消す
 		highlight("");
 	}
@@ -117,12 +141,23 @@
 		map?.flyTo({ center: b.center, zoom: Math.max(map.getZoom(), 16.5), duration: 800 });
 	}
 
+	/** 部屋検索の結果を選択 → 親建物へ寄って階層図を該当階・部屋で開く */
+	function selectRoom(hit: RoomHit) {
+		const b = buildings.find((x) => x.id === hit.buildingId);
+		if (b) selectBuilding(b);
+		else query = "";
+		openFloors(hit.buildingId, hit.level, hit.room.number);
+	}
+
 	function onSearchKeydown(e: KeyboardEvent) {
 		if (e.key === "Escape") {
 			query = "";
 		} else if (e.key === "Enter") {
-			const first = results[0];
-			if (first) selectBuilding(first);
+			// 部屋の方が具体的なので優先。なければ建物
+			const room = roomResults[0];
+			const building = results[0];
+			if (room) selectRoom(room);
+			else if (building) selectBuilding(building);
 		}
 	}
 
@@ -331,18 +366,40 @@
 		/>
 	</div>
 	{#if query.trim() !== ""}
-		<ul class="results">
-			{#each results as b (b.id)}
-				<li>
-					<button onclick={() => selectBuilding(b)}>
-						<span class="r-name">{b.name}</span>
-						{#if b.en}<span class="r-en">{b.en}</span>{/if}
-					</button>
-				</li>
-			{:else}
-				<li class="empty">該当する建物がないよ</li>
-			{/each}
-		</ul>
+		<div class="results">
+			{#if roomResults.length > 0}
+				<p class="group">部屋</p>
+				<ul>
+					{#each roomResults as hit (hit.buildingId + hit.room.number)}
+						<li>
+							<button onclick={() => selectRoom(hit)}>
+								<span class="r-name">
+									{hit.room.name}
+									{#if hit.room.hall}<span class="r-hall">{hit.room.hall}</span>{/if}
+								</span>
+								<span class="r-en">{hit.buildingName} {hit.floorLabel}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if results.length > 0}
+				<p class="group">建物</p>
+				<ul>
+					{#each results as b (b.id)}
+						<li>
+							<button onclick={() => selectBuilding(b)}>
+								<span class="r-name">{b.name}</span>
+								{#if b.en}<span class="r-en">{b.en}</span>{/if}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if results.length === 0 && roomResults.length === 0}
+				<p class="empty">該当する建物・部屋がないよ</p>
+			{/if}
+		</div>
 	{/if}
 </div>
 
@@ -352,7 +409,16 @@
 		<h2>{selected.name}</h2>
 		{#if selected.en}<p class="sub">{selected.en}</p>{/if}
 		{#if selected.levels}<p class="meta">🏢 地上 {selected.levels} 階</p>{/if}
+		{#if hasFloors(selected.id)}
+			<button class="floors-btn" onclick={() => selected && openFloors(selected.id, null, null)}>
+				階層図を見る
+			</button>
+		{/if}
 	</div>
+{/if}
+
+{#if floorData}
+	<FloorView data={floorData} {focusLevel} {focusRoom} onclose={closeFloors} />
 {/if}
 
 <style>
@@ -399,7 +465,6 @@
 		color: #9bafa0;
 	}
 	.results {
-		list-style: none;
 		margin: 0.5rem 0 0;
 		padding: 0.3rem;
 		background: #ffffff;
@@ -408,8 +473,29 @@
 		max-height: 60vh;
 		overflow-y: auto;
 	}
+	.results ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
 	.results li {
 		margin: 0;
+	}
+	.results .group {
+		margin: 0.35rem 0 0.1rem;
+		padding: 0 0.75rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: #9bafa0;
+	}
+	.r-hall {
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: #ff6b4a;
+		background: #fff0eb;
+		border-radius: 0.35rem;
+		padding: 0.05rem 0.35rem;
+		margin-left: 0.3rem;
 	}
 	.results button {
 		display: flex;
@@ -471,6 +557,20 @@
 		margin: 0.55rem 0 0;
 		font-size: 0.85rem;
 		color: #55624f;
+	}
+	.floors-btn {
+		margin-top: 0.7rem;
+		border: none;
+		background: #ff6b4a;
+		color: #ffffff;
+		padding: 0.45rem 0.9rem;
+		border-radius: 999px;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.floors-btn:hover {
+		background: #f1542f;
 	}
 	.close {
 		position: absolute;
