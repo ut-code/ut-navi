@@ -1,5 +1,5 @@
 /**
- * 本郷キャンパスの建物・境界を Overpass API から取得し GeoJSON に焼く。
+ * キャンパスの建物・境界を Overpass API から取得し GeoJSON に焼く。
  *   bun run scripts/fetch-buildings.ts
  *
  * OSM relation 5414648 = 東京大学本郷キャンパス。その area 内部の building だけを
@@ -18,7 +18,19 @@ const ENDPOINTS = [
 	"https://overpass.kumi.systems/api/interpreter",
 	"https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
-const CAMPUS_RELATION = 5414648; // 東京大学本郷キャンパス
+
+type Campus = {
+	id: string;
+	name: string;
+	relation?: number;
+	way?: number;
+};
+
+const CAMPUSES: Campus[] = [
+	{ id: "hongo", name: "本郷キャンパス", relation: 5414648 },
+	{ id: "komaba", name: "駒場キャンパス", way: 317015602 },
+];
+
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../static/data");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -46,21 +58,31 @@ async function overpass(query: string): Promise<unknown> {
 	throw lastErr;
 }
 
-async function main() {
-	console.log("fetching buildings inside Hongo campus...");
+async function fetchCampus(campus: Campus) {
+	console.log(`fetching buildings inside ${campus.name}...`);
+	let areaQuery = "";
+	if (campus.relation) {
+		areaQuery = `rel(${campus.relation});map_to_area->.campus;`;
+	} else if (campus.way) {
+		areaQuery = `way(${campus.way});map_to_area->.campus;`;
+	}
+
 	const buildings = await overpass(
-		`[out:json][timeout:90];rel(${CAMPUS_RELATION});map_to_area->.campus;` +
+		`[out:json][timeout:90];${areaQuery}` +
 			`(way["building"](area.campus);relation["building"](area.campus););out geom;`,
 	);
 
-	console.log("fetching campus boundary...");
-	const boundary = await overpass(`[out:json][timeout:60];rel(${CAMPUS_RELATION});out geom;`);
+	console.log(`fetching ${campus.name} boundary...`);
+	const boundary = await overpass(
+		`[out:json][timeout:60];` +
+			(campus.relation ? `rel(${campus.relation});` : `way(${campus.way});`) +
+			`out geom;`,
+	);
 
-	console.log("fetching roads/paths inside Hongo campus...");
+	console.log(`fetching roads/paths inside ${campus.name}...`);
 	// highway=* は車道だけでなく footway/path/steps も含む。構内は歩行者動線が主役
 	const roads = await overpass(
-		`[out:json][timeout:90];rel(${CAMPUS_RELATION});map_to_area->.campus;` +
-			`(way["highway"](area.campus););out geom;`,
+		`[out:json][timeout:90];${areaQuery}` + `(way["highway"](area.campus););out geom;`,
 	);
 
 	// osmtogeojson の引数型は any なので unknown をそのまま渡せる
@@ -77,15 +99,28 @@ async function main() {
 		(f) => f.geometry?.type === "LineString" || f.geometry?.type === "MultiLineString",
 	);
 
-	await writeFile(resolve(OUT_DIR, "hongo-buildings.geojson"), `${JSON.stringify(buildingsGeo)}\n`);
-	await writeFile(resolve(OUT_DIR, "hongo-boundary.geojson"), `${JSON.stringify(boundaryGeo)}\n`);
-	await writeFile(resolve(OUT_DIR, "hongo-roads.geojson"), `${JSON.stringify(roadsGeo)}\n`);
+	await writeFile(
+		resolve(OUT_DIR, `${campus.id}-buildings.geojson`),
+		`${JSON.stringify(buildingsGeo)}\n`,
+	);
+	await writeFile(
+		resolve(OUT_DIR, `${campus.id}-boundary.geojson`),
+		`${JSON.stringify(boundaryGeo)}\n`,
+	);
+	await writeFile(resolve(OUT_DIR, `${campus.id}-roads.geojson`), `${JSON.stringify(roadsGeo)}\n`);
 
 	const named = buildingsGeo.features.filter((f) => f.properties?.name).length;
 	console.log(
-		`done: ${buildingsGeo.features.length} buildings (${named} named), ` +
-			`${roadsGeo.features.length} roads -> ${OUT_DIR}`,
+		`done ${campus.name}: ${buildingsGeo.features.length} buildings (${named} named), ` +
+			`${roadsGeo.features.length} roads`,
 	);
+}
+
+async function main() {
+	for (const campus of CAMPUSES) {
+		await fetchCampus(campus);
+	}
+	console.log(`all done -> ${OUT_DIR}`);
 }
 
 main().catch((e) => {

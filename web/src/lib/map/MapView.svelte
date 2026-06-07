@@ -2,16 +2,11 @@
 	import maplibregl from "maplibre-gl";
 	import { onMount } from "svelte";
 	import "maplibre-gl/dist/maplibre-gl.css";
-	import {
-		BASE_STYLE,
-		CAMPUS_BEARING,
-		CAMPUS_BOUNDS,
-		CAMPUS_CENTER,
-		OSM_ATTRIBUTION,
-		ZOOM,
-	} from "./campus.ts";
+	import { BASE_STYLE, OSM_ATTRIBUTION, type CampusConfig } from "./campuses.ts";
 	import FloorView from "./FloorView.svelte";
 	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors.ts";
+
+	let { config }: { config: CampusConfig } = $props();
 
 	type Selected = {
 		id: string;
@@ -30,7 +25,7 @@
 	};
 
 	let container: HTMLDivElement;
-	let map: maplibregl.Map | undefined;
+	let map = $state<maplibregl.Map | undefined>();
 	let selected = $state<Selected | null>(null);
 
 	// 建物名・部屋名検索
@@ -165,12 +160,12 @@
 		map = new maplibregl.Map({
 			container,
 			style: BASE_STYLE,
-			center: CAMPUS_CENTER,
-			zoom: ZOOM.initial,
-			minZoom: ZOOM.min,
-			maxZoom: ZOOM.max,
-			bearing: CAMPUS_BEARING, // 正門が下に来る向きに固定
-			maxBounds: CAMPUS_BOUNDS, // キャンパス外へ大きく流れないよう固定
+			center: config.center,
+			zoom: config.zoom.initial,
+			minZoom: config.zoom.min,
+			maxZoom: config.zoom.max,
+			bearing: config.bearing, // 正門が下に来る向きに固定
+			maxBounds: config.bounds, // キャンパス外へ大きく流れないよう固定
 			// 斜め(3D)に見えないよう回転・傾きを完全に無効化し純 2D に固定
 			dragRotate: false,
 			pitchWithRotate: false,
@@ -187,15 +182,15 @@
 
 			map.addSource("campus-boundary", {
 				type: "geojson",
-				data: "/data/hongo-boundary.geojson",
+				data: `/data/${config.id}-boundary.geojson`,
 			});
 			map.addSource("campus-roads", {
 				type: "geojson",
-				data: "/data/hongo-roads.geojson",
+				data: `/data/${config.id}-roads.geojson`,
 			});
 			map.addSource("campus-buildings", {
 				type: "geojson",
-				data: "/data/hongo-buildings.geojson",
+				data: `/data/${config.id}-buildings.geojson`,
 			});
 
 			// 道路の縁取り (casing)。白い道に縁を付けて地面から浮かせる
@@ -301,7 +296,7 @@
 			});
 
 			// 検索インデックスを構築 (実行時の地図描画とは別に生データを取得)
-			fetch("/data/hongo-buildings.geojson")
+			fetch(`/data/${config.id}-buildings.geojson`)
 				.then((r) => r.json())
 				.then((data: unknown) => buildIndex(data))
 				.catch(() => {}); // 失敗してもクリック選択は機能するので握り潰す
