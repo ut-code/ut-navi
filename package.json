@@ -6,7 +6,7 @@
     "typescript": "^5"
   },
   "scripts": {
-    "launch": "cd web; bun dev",
+    "dev": "cd web; bun dev",
     "check": "bun run typecheck && bun run lint",
     "typecheck": "cd web; bun run typecheck",
     "lint": "cd web; bun run lint",
