@@ -21,7 +21,29 @@
 	<header>
 		<div>
 			<h2>{data.buildingName}</h2>
-			<p class="src">階層図: {data.source}</p>
+			<div class="meta">
+				<p class="src">階層図: {data.source}</p>
+				{#if data.websiteUrl}
+					<a href={data.websiteUrl} target="_blank" rel="noopener noreferrer" class="link">
+						関連サイト
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="12"
+							height="12"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+							<polyline points="15 3 21 3 21 9" />
+							<line x1="10" y1="14" x2="21" y2="3" />
+						</svg>
+					</a>
+				{/if}
+			</div>
 		</div>
 		<button class="close" onclick={onclose} aria-label="閉じる">×</button>
 	</header>
@@ -51,10 +73,22 @@
 				</li>
 			{/each}
 		</ul>
+	{:else}
+		<div class="no-floor">
+			<p>階層図が見当たりません。</p>
+		</div>
 	{/if}
 </aside>
 
 <style>
+	.no-floor {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #9bafa0;
+		font-size: 0.9rem;
+	}
 	.floor {
 		position: absolute;
 		top: 0;
@@ -83,9 +117,26 @@
 		color: #2f3a32;
 	}
 	header .src {
-		margin: 0.2rem 0 0;
+		margin: 0;
 		font-size: 0.72rem;
 		color: #9bafa0;
+	}
+	.meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-top: 0.2rem;
+	}
+	.link {
+		font-size: 0.72rem;
+		color: #4a8c5f;
+		text-decoration: none;
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
+	}
+	.link:hover {
+		text-decoration: underline;
 	}
 	.close {
 		border: none;
