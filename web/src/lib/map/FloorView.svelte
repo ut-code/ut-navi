@@ -24,7 +24,7 @@
 			<div class="meta">
 				<p class="src">階層図: {data.source}</p>
 				{#if data.websiteUrl}
-					<a href={data.websiteUrl} target="_blank" rel="noopener noreferrer" class="link">
+					<a href={data.websiteUrl} target="_blank" rel="external noopener noreferrer" class="link">
 						関連サイト
 						<svg
 							xmlns="http://www.w3.org/2000/svg"

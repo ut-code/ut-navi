@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from "$app/paths";
 	import { CAMPUSES } from "$lib/map/campuses.ts";
 </script>
 
@@ -11,8 +12,8 @@
 	</div>
 
 	<div class="campus-selector">
-		{#each Object.values(CAMPUSES) as campus}
-			<a href="/{campus.id}" class="campus-card">
+		{#each Object.values(CAMPUSES) as campus (campus.id)}
+			<a href={resolve("/[campus]", { campus: campus.id })} class="campus-card">
 				<div class="card-content">
 					<h2>{campus.name}</h2>
 					<p>{campus.id.charAt(0).toUpperCase() + campus.id.slice(1)} Campus</p>
