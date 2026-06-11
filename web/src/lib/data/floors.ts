@@ -32,6 +32,8 @@ export type BuildingFloors = {
 	buildingName: string;
 	/** 出典 (拝借データなので明示) */
 	source: string;
+	/** 建物関連ウェブサイトの URL */
+	websiteUrl?: string;
 	floors: Floor[];
 };
 
@@ -78,9 +80,240 @@ const ENG2: BuildingFloors = {
 	],
 };
 
+const KOMABA_BUILDINGS: BuildingFloors[] = [
+	{
+		buildingId: "relation/20071961",
+		buildingName: "1号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building1.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/44546690",
+		buildingName: "5号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building5.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835088",
+		buildingName: "7号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building7.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835091",
+		buildingName: "8号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building8.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835090",
+		buildingName: "10号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building10.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835085",
+		buildingName: "11号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building11.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "relation/20069043",
+		buildingName: "12号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building12.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835084",
+		buildingName: "13号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building13.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835078",
+		buildingName: "15号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building15.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/43835077",
+		buildingName: "16号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building16.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/224467952",
+		buildingName: "17号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building17.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/224459839",
+		buildingName: "18号館",
+		source: "komabanavi",
+		floors: [{ level: 1, label: "1F", image: "/data/floors/komabanavi/Building18.jpg", rooms: [] }],
+	},
+	{
+		buildingId: "way/44546660",
+		buildingName: "900番講堂",
+		source: "komabanavi",
+		floors: [
+			{ level: 1, label: "1F", image: "/data/floors/komabanavi/LectureHall900.jpg", rooms: [] },
+		],
+	},
+	{
+		buildingId: "way/43835092",
+		buildingName: "21KOMCEE West",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/campuslife/facilities/21komcee/index.html",
+		floors: [
+			{ level: 1, label: "1F", image: "/data/floors/komabanavi/KOMCEE21West.jpg", rooms: [] },
+		],
+	},
+	{
+		buildingId: "way/43835089",
+		buildingName: "21KOMCEE East",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/campuslife/facilities/21komcee/index.html",
+		floors: [
+			{ level: 1, label: "1F", image: "/data/floors/komabanavi/KOMCEE21East.jpg", rooms: [] },
+		],
+	},
+	{
+		buildingId: "way/224479373",
+		buildingName: "情報教育棟",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/",
+		floors: [
+			{ level: 1, label: "1F", image: "/data/floors/komabanavi/InfoEduBuild.jpg", rooms: [] },
+		],
+	},
+	{
+		buildingId: "relation/20069070",
+		buildingName: "アドミニストレーション棟",
+		source: "komabanavi",
+		websiteUrl: "https://www.u-tokyo.ac.jp/",
+		floors: [
+			{
+				level: 1,
+				label: "1F",
+				image: "/data/floors/komabanavi/AdministrationBuilding.jpg",
+				rooms: [],
+			},
+		],
+	},
+	{
+		buildingId: "way/43886288",
+		buildingName: "コミプラ北館",
+		source: "komabanavi",
+		floors: [
+			{
+				level: 1,
+				label: "1F",
+				image: "/data/floors/komabanavi/ComiplaNorthBuilding.jpg",
+				rooms: [],
+			},
+		],
+	},
+	/*{
+		buildingId: "way/224460761",
+		buildingName: "9号館",
+		source: "komabanavi",
+		floors: [],
+	},*/
+	/*{
+		buildingId: "way/43835083",
+		buildingName: "14号館",
+		source: "komabanavi",
+		floors: [],
+	},*/
+	/*{
+		buildingId: "way/43887197",
+		buildingName: "101号館",
+		source: "komabanavi",
+		floors: [],
+	},*/
+	/*{
+		buildingId: "way/1207695903",
+		buildingName: "19号館",
+		source: "komabanavi",
+		floors: [],
+	},*/
+	{
+		buildingId: "relation/2982357",
+		buildingName: "駒場図書館",
+		source: "komabanavi",
+		websiteUrl: "https://www.lib.u-tokyo.ac.jp/ja/library/komaba",
+		floors: [],
+	},
+	{
+		buildingId: "way/1036804273",
+		buildingName: "第二体育館",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/campuslife/facilities/athletics/index.html",
+		floors: [],
+	},
+	{
+		buildingId: "way/43839279",
+		buildingName: "第一体育館",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/campuslife/facilities/athletics/index.html",
+		floors: [],
+	},
+	{
+		buildingId: "way/43839282",
+		buildingName: "キャンパスプラザA棟",
+		source: "komabanavi",
+		websiteUrl: "https://www.gkuc.net/",
+		floors: [],
+	},
+	{
+		buildingId: "way/43839283",
+		buildingName: "キャンパスプラザB棟",
+		source: "komabanavi",
+		websiteUrl: "https://www.gkuc.net/",
+		floors: [],
+	},
+	{
+		buildingId: "way/43537943",
+		buildingName: "駒場博物館",
+		source: "komabanavi",
+		websiteUrl: "https://museum.c.u-tokyo.ac.jp/",
+		floors: [],
+	},
+	{
+		buildingId: "way/43537950",
+		buildingName: "駒場保健センター",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/campuslife/facilities/healthcenter/index.html",
+		floors: [],
+	},
+	{
+		buildingId: "way/43537964",
+		buildingName: "生協食堂",
+		source: "komabanavi",
+		websiteUrl: "https://www.utcoop.or.jp/shop/komaba/",
+		floors: [],
+	},
+	/*{
+		buildingId: "way/224460760",
+		buildingName: "アドバンスト・リサーチ・ラボラトリー",
+		source: "komabanavi",
+		floors: [],
+	},*/
+	{
+		buildingId: "way/133753621",
+		buildingName: "駒場国際教育研究棟",
+		source: "komabanavi",
+		websiteUrl: "https://www.c.u-tokyo.ac.jp/",
+		floors: [],
+	},
+];
+
 /** 建物 id → 階層データ */
 export const FLOOR_DATA: Record<string, BuildingFloors> = {
 	[ENG2.buildingId]: ENG2,
+	...Object.fromEntries(KOMABA_BUILDINGS.map((b) => [b.buildingId, b])),
 };
 
 /** その建物に階層図データがあるか */
