@@ -2,8 +2,9 @@
 	import maplibregl from "maplibre-gl";
 	import { onMount } from "svelte";
 	import "maplibre-gl/dist/maplibre-gl.css";
-	import { BASE_STYLE, OSM_ATTRIBUTION, type CampusConfig } from "./campuses.ts";
-	import FloorView from "./FloorView.svelte";
+	import { resolve } from "$app/paths";
+	import { BASE_STYLE, CAMPUSES, OSM_ATTRIBUTION, type CampusConfig } from "./campuses.ts";
+	import DetailPanel from "./DetailPanel.svelte";
 	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors.ts";
 
 	let { config }: { config: CampusConfig } = $props();
@@ -31,6 +32,7 @@
 	// 建物名・部屋名検索
 	let buildings = $state<Building[]>([]);
 	let query = $state("");
+	let searchFocused = $state(false);
 	const results = $derived.by(() => {
 		const q = query.trim().toLowerCase();
 		if (q === "") return [];
@@ -39,14 +41,15 @@
 			.slice(0, 6);
 	});
 	const roomResults = $derived(searchRooms(query, 6));
+	// 空欄でフォーカスしたときの候補先出し。タイプ量ゼロで飛べるよう、
+	// 階層図など詳細データを持つ建物をクイックアクセスとして並べる
+	const suggestions = $derived(buildings.filter((b) => hasFloors(b.id)).slice(0, 8));
 
-	// 階層図ビュー (部屋データを持つ建物のみ)
-	let floorBuildingId = $state<string | null>(null);
+	// 選択中の建物の階層図 (なければ null)。選択状態から導出し、別状態を持たない
+	const floorData = $derived(selected === null ? null : (FLOOR_DATA[selected.id] ?? null));
+	// 階層図を開いた階・部屋のフォーカス (部屋検索からの遷移用)
 	let focusLevel = $state<number | null>(null);
 	let focusRoom = $state<string | null>(null);
-	const floorData = $derived(
-		floorBuildingId === null ? null : (FLOOR_DATA[floorBuildingId] ?? null),
-	);
 
 	/** GeoJSON プロパティは unknown。文字列のときだけ取り出す (assertion 不可なので実行時判定) */
 	function asString(v: unknown): string | null {
@@ -109,39 +112,38 @@
 		map?.setFilter("campus-buildings-selected-fill", ["==", ["get", "id"], id]);
 	}
 
-	function closeFloors() {
-		floorBuildingId = null;
-		focusLevel = null;
-		focusRoom = null;
-	}
-
-	function openFloors(buildingId: string, level: number | null, room: string | null) {
-		floorBuildingId = buildingId;
-		focusLevel = level;
-		focusRoom = room;
-	}
-
 	function clearSelection() {
 		selected = null;
-		closeFloors();
+		focusLevel = null;
+		focusRoom = null;
 		// 何にもマッチしない式に戻してハイライトを消す
 		highlight("");
 	}
 
-	/** 検索結果から建物を選択 → ハイライト + その建物へ寄る */
+	/** 建物を選択 → 詳細パネルを開く。階層図フォーカスはここでリセット (建物検索/クリック共通) */
+	function select(s: Selected) {
+		selected = s;
+		focusLevel = null;
+		focusRoom = null;
+		highlight(s.id);
+	}
+
+	/** 検索結果から建物を選択 → 選択 + その建物へ寄る */
 	function selectBuilding(b: Building) {
-		selected = { id: b.id, name: b.name, levels: b.levels, en: b.en };
-		highlight(b.id);
+		select({ id: b.id, name: b.name, levels: b.levels, en: b.en });
 		query = "";
+		searchFocused = false;
 		map?.flyTo({ center: b.center, zoom: Math.max(map.getZoom(), 16.5), duration: 800 });
 	}
 
-	/** 部屋検索の結果を選択 → 親建物へ寄って階層図を該当階・部屋で開く */
+	/** 部屋検索の結果を選択 → 親建物へ寄り、該当階・部屋を開いた状態にする */
 	function selectRoom(hit: RoomHit) {
 		const b = buildings.find((x) => x.id === hit.buildingId);
 		if (b) selectBuilding(b);
 		else query = "";
-		openFloors(hit.buildingId, hit.level, hit.room.number);
+		// selectBuilding がフォーカスを消すので、その後に部屋フォーカスを乗せる
+		focusLevel = hit.level;
+		focusRoom = hit.room.number;
 	}
 
 	function onSearchKeydown(e: KeyboardEvent) {
@@ -174,8 +176,9 @@
 			attributionControl: { customAttribution: OSM_ATTRIBUTION },
 		});
 		map.touchZoomRotate.disableRotation(); // ピンチ回転だけ殺す (ピンチズームは残す)
-		// コンパス不要 (回転しないため)。ズームボタンのみ
-		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+		// コンパス不要 (回転しないため)。ズームのみ。上部は検索/ナビ、右上は詳細パネルが
+		// 使うので、ズーム・出典はまとめて右下へ寄せる
+		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
 		map.on("load", () => {
 			if (!map) return;
@@ -244,18 +247,25 @@
 				},
 			});
 
-			// 建物ポリゴン (あたたかいクリーム色)
+			// 建物ポリゴン。名前付き = あたたかいクリーム色 (押すと情報が出る)、
+			// 名前なし = グレーアウト (情報が無いので押す価値が無いことを一目で示す)
 			map.addLayer({
 				id: "campus-buildings-fill",
 				type: "fill",
 				source: "campus-buildings",
-				paint: { "fill-color": "#fbeede", "fill-opacity": 0.95 },
+				paint: {
+					"fill-color": ["case", ["has", "name"], "#fbeede", "#e2e7e2"],
+					"fill-opacity": ["case", ["has", "name"], 0.95, 0.55],
+				},
 			});
 			map.addLayer({
 				id: "campus-buildings-outline",
 				type: "line",
 				source: "campus-buildings",
-				paint: { "line-color": "#e6cfac", "line-width": 1.2 },
+				paint: {
+					"line-color": ["case", ["has", "name"], "#e6cfac", "#cdd5cd"],
+					"line-width": 1.2,
+				},
 			});
 
 			// 選択中の建物の塗り強調。初期は何にもマッチしない式
@@ -281,11 +291,11 @@
 				type: "symbol",
 				source: "campus-buildings",
 				filter: ["has", "name"],
-				minzoom: 15,
+				minzoom: 14,
 				layout: {
 					"text-field": ["get", "name"],
 					"text-font": ["Noto Sans Regular"],
-					"text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
+					"text-size": ["interpolate", ["linear"], ["zoom"], 14, 10, 18, 13],
 					"text-max-width": 8,
 				},
 				paint: {
@@ -301,29 +311,31 @@
 				.then((data: unknown) => buildIndex(data))
 				.catch(() => {}); // 失敗してもクリック選択は機能するので握り潰す
 
-			// 建物クリックで選択
+			// 建物クリックで選択 → 詳細パネルへ直結 (中間カードは無し)
 			map.on("click", "campus-buildings-fill", (e) => {
 				if (!map) return;
 				const f = e.features?.[0];
 				if (!f?.properties) return;
 				const id = asString(f.properties.id);
-				if (id === null) return; // id がなければハイライト不能なので無視
-				selected = {
+				const name = asString(f.properties.name);
+				// 名前なし建物は情報が無くグレーアウト表示。クリックも無反応にする
+				if (id === null || name === null) return;
+				select({
 					id,
-					name: asString(f.properties.name) ?? "(名称未設定の建物)",
+					name,
 					levels: asString(f.properties["building:levels"]),
 					en: asString(f.properties["name:en"]),
-				};
-				highlight(id);
+				});
 			});
 
-			// 建物以外の余白をクリックしたら選択解除
+			// 余白 (名前付き建物以外) をクリックしたら選択解除。
+			// グレーの名前なし建物も「情報なし」なので余白扱いで解除する
 			map.on("click", (e) => {
 				if (!map) return;
-				const hits = map.queryRenderedFeatures(e.point, {
-					layers: ["campus-buildings-fill"],
-				});
-				if (hits.length === 0) clearSelection();
+				const hit = map
+					.queryRenderedFeatures(e.point, { layers: ["campus-buildings-fill"] })
+					.some((f) => asString(f.properties?.name) !== null);
+				if (!hit) clearSelection();
 			});
 
 			// 建物上でカーソルをポインターに
@@ -341,47 +353,100 @@
 
 <div bind:this={container} class="map"></div>
 
-<div class="search">
-	<div class="search-box">
-		<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="M21 21l-4.3-4.3M11 18a7 7 0 110-14 7 7 0 010 14z"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
+<!-- 上部バー: ホーム/キャンパス切替 (左) + 検索 (残り幅)。1 本にまとめる -->
+<div class="topbar">
+	<nav class="nav">
+		<a class="home" href={resolve("/")} aria-label="キャンパス選択へ戻る" title="キャンパス選択">
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path
+					d="M3 11l9-8 9 8M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+		</a>
+		<div class="campus-switch">
+			{#each Object.values(CAMPUSES) as c (c.id)}
+				<a
+					href={resolve("/[campus]", { campus: c.id })}
+					class:active={c.id === config.id}
+					aria-current={c.id === config.id ? "page" : undefined}
+				>
+					{c.name.replace("キャンパス", "")}
+				</a>
+			{/each}
+		</div>
+	</nav>
+
+	<div class="search">
+		<div class="search-box">
+			<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+				<path
+					d="M21 21l-4.3-4.3M11 18a7 7 0 110-14 7 7 0 010 14z"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+				/>
+			</svg>
+			<input
+				type="search"
+				placeholder="建物・部屋を検索"
+				bind:value={query}
+				onkeydown={onSearchKeydown}
+				onfocus={() => (searchFocused = true)}
+				onblur={() => setTimeout(() => (searchFocused = false), 120)}
+				aria-label="建物・部屋を検索"
 			/>
-		</svg>
-		<input
-			type="search"
-			placeholder="建物名で検索"
-			bind:value={query}
-			onkeydown={onSearchKeydown}
-			aria-label="建物名で検索"
-		/>
-	</div>
-	{#if query.trim() !== ""}
-		<div class="results">
-			{#if roomResults.length > 0}
-				<p class="group">部屋</p>
-				<ul>
-					{#each roomResults as hit (hit.buildingId + hit.room.number)}
-						<li>
-							<button onclick={() => selectRoom(hit)}>
-								<span class="r-name">
-									{hit.room.name}
-									{#if hit.room.hall}<span class="r-hall">{hit.room.hall}</span>{/if}
-								</span>
-								<span class="r-en">{hit.buildingName} {hit.floorLabel}</span>
-							</button>
-						</li>
-					{/each}
-				</ul>
+			{#if query !== ""}
+				<button class="clear" onclick={() => (query = "")} aria-label="クリア">×</button>
 			{/if}
-			{#if results.length > 0}
-				<p class="group">建物</p>
+		</div>
+
+		{#if query.trim() !== ""}
+			<div class="results">
+				{#if roomResults.length > 0}
+					<p class="group">部屋</p>
+					<ul>
+						{#each roomResults as hit (hit.buildingId + hit.room.number)}
+							<li>
+								<button onclick={() => selectRoom(hit)}>
+									<span class="r-name">
+										{hit.room.name}
+										{#if hit.room.hall}<span class="r-hall">{hit.room.hall}</span>{/if}
+									</span>
+									<span class="r-en">{hit.buildingName} {hit.floorLabel}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if results.length > 0}
+					<p class="group">建物</p>
+					<ul>
+						{#each results as b (b.id)}
+							<li>
+								<button onclick={() => selectBuilding(b)}>
+									<span class="r-name">{b.name}</span>
+									{#if b.en}<span class="r-en">{b.en}</span>{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if results.length === 0 && roomResults.length === 0}
+					<p class="empty">該当する建物・部屋がないよ</p>
+				{/if}
+			</div>
+		{:else if searchFocused && suggestions.length > 0}
+			<!-- 空欄フォーカス時の候補先出し。タイプせずに飛べる -->
+			<div class="results">
+				<p class="group">クイックアクセス</p>
 				<ul>
-					{#each results as b (b.id)}
+					{#each suggestions as b (b.id)}
 						<li>
 							<button onclick={() => selectBuilding(b)}>
 								<span class="r-name">{b.name}</span>
@@ -390,30 +455,21 @@
 						</li>
 					{/each}
 				</ul>
-			{/if}
-			{#if results.length === 0 && roomResults.length === 0}
-				<p class="empty">該当する建物・部屋がないよ</p>
-			{/if}
-		</div>
-	{/if}
+			</div>
+		{/if}
+	</div>
 </div>
 
 {#if selected}
-	<div class="info-card">
-		<button class="close" onclick={clearSelection} aria-label="閉じる">×</button>
-		<h2>{selected.name}</h2>
-		{#if selected.en}<p class="sub">{selected.en}</p>{/if}
-		{#if selected.levels}<p class="meta">🏢 地上 {selected.levels} 階</p>{/if}
-		{#if hasFloors(selected.id)}
-			<button class="floors-btn" onclick={() => selected && openFloors(selected.id, null, null)}>
-				階層図を見る
-			</button>
-		{/if}
-	</div>
-{/if}
-
-{#if floorData}
-	<FloorView data={floorData} {focusLevel} {focusRoom} onclose={closeFloors} />
+	<DetailPanel
+		name={selected.name}
+		en={selected.en}
+		levels={selected.levels}
+		data={floorData}
+		{focusLevel}
+		{focusRoom}
+		onclose={clearSelection}
+	/>
 {/if}
 
 <style>
@@ -422,15 +478,83 @@
 		inset: 0;
 	}
 
-	/* 検索 */
-	.search {
+	/* 上部バー: ナビ (左) + 検索 (残り) を 1 行に。レスポンシブで自然に縮む */
+	.topbar {
 		position: absolute;
 		top: 1rem;
-		left: 50%;
-		transform: translateX(-50%);
-		width: min(26rem, calc(100% - 2rem));
+		left: 1rem;
+		right: 1rem;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
 		font-family: system-ui, sans-serif;
 		z-index: 10;
+		pointer-events: none; /* 余白部分で地図クリックを止めない。子だけ拾う */
+	}
+	.topbar > * {
+		pointer-events: auto;
+	}
+
+	/* ナビ: ホーム + キャンパス切替 */
+	.nav {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex: none;
+	}
+	.home,
+	.campus-switch {
+		background: #ffffff;
+		border-radius: 999px;
+		box-shadow: 0 4px 18px rgba(45, 70, 50, 0.16);
+		height: 2.9rem;
+		display: flex;
+		align-items: center;
+	}
+	.home {
+		justify-content: center;
+		width: 2.9rem;
+		color: #55624f;
+		flex: none;
+	}
+	.home:hover {
+		color: #ff6b4a;
+	}
+	.home svg {
+		width: 1.3rem;
+		height: 1.3rem;
+	}
+	.campus-switch {
+		padding: 0.25rem;
+		gap: 0.15rem;
+	}
+	.campus-switch a {
+		display: flex;
+		align-items: center;
+		padding: 0 0.7rem;
+		height: 100%;
+		border-radius: 999px;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #8aa890;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.campus-switch a.active {
+		background: #ff6b4a;
+		color: #ffffff;
+	}
+	.campus-switch a:not(.active):hover {
+		background: #f1f7f1;
+		color: #55624f;
+	}
+
+	/* 検索: 残り幅いっぱい。結果はその下に被せて出す */
+	.search {
+		position: relative;
+		flex: 1;
+		min-width: 0;
+		max-width: 26rem;
 	}
 	.search-box {
 		display: flex;
@@ -522,63 +646,24 @@
 		color: #9bafa0;
 	}
 
-	/* 情報カード */
-	.info-card {
-		position: absolute;
-		left: 1rem;
-		bottom: 1rem;
-		min-width: 14rem;
-		max-width: min(20rem, calc(100% - 2rem));
-		padding: 1rem 1.2rem;
-		padding-left: 1.4rem;
-		background: #ffffff;
-		border-radius: 1rem;
-		border-left: 5px solid #ff6b4a;
-		box-shadow: 0 8px 28px rgba(45, 70, 50, 0.2);
-		font-family: system-ui, sans-serif;
-	}
-	.info-card h2 {
-		margin: 0 1.5rem 0 0;
-		font-size: 1.1rem;
-		font-weight: 700;
-		color: #2f3a32;
-	}
-	.info-card .sub {
-		margin: 0.25rem 0 0;
-		font-size: 0.8rem;
+	/* 検索クリアボタン */
+	.clear {
+		flex: none;
+		border: none;
+		background: #eef2ee;
 		color: #8aa890;
-	}
-	.info-card .meta {
-		margin: 0.55rem 0 0;
-		font-size: 0.85rem;
-		color: #55624f;
-	}
-	.floors-btn {
-		margin-top: 0.7rem;
-		border: none;
-		background: #ff6b4a;
-		color: #ffffff;
-		padding: 0.45rem 0.9rem;
+		width: 1.5rem;
+		height: 1.5rem;
 		border-radius: 999px;
-		font-size: 0.85rem;
-		font-weight: 600;
-		cursor: pointer;
-	}
-	.floors-btn:hover {
-		background: #f1542f;
-	}
-	.close {
-		position: absolute;
-		top: 0.5rem;
-		right: 0.6rem;
-		border: none;
-		background: none;
-		font-size: 1.3rem;
+		font-size: 1rem;
 		line-height: 1;
-		color: #b7c4b8;
 		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
-	.close:hover {
+	.clear:hover {
+		background: #e0e7e0;
 		color: #55624f;
 	}
 </style>
