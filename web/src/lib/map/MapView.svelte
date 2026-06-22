@@ -353,25 +353,13 @@
 
 <div bind:this={container} class="map"></div>
 
-<!-- 上部バー: ホーム/キャンパス切替 (左) + 検索 (残り幅)。1 本にまとめる -->
+<!-- 上部バー: キャンパス切替 (左) + 検索 (残り幅)。1 本にまとめる -->
 <div class="topbar">
 	<nav class="nav">
-		<a class="home" href={resolve("/")} aria-label="キャンパス選択へ戻る" title="キャンパス選択">
-			<svg viewBox="0 0 24 24" aria-hidden="true">
-				<path
-					d="M3 11l9-8 9 8M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				/>
-			</svg>
-		</a>
 		<div class="campus-switch">
 			{#each Object.values(CAMPUSES) as c (c.id)}
 				<a
-					href={resolve("/[campus]", { campus: c.id })}
+					href={`${resolve("/")}?campus=${c.id}`}
 					class:active={c.id === config.id}
 					aria-current={c.id === config.id ? "page" : undefined}
 				>
@@ -495,14 +483,13 @@
 		pointer-events: auto;
 	}
 
-	/* ナビ: ホーム + キャンパス切替 */
+	/* ナビ: キャンパス切替 */
 	.nav {
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
 		flex: none;
 	}
-	.home,
 	.campus-switch {
 		background: #ffffff;
 		border-radius: 999px;
@@ -510,21 +497,6 @@
 		height: 2.9rem;
 		display: flex;
 		align-items: center;
-	}
-	.home {
-		justify-content: center;
-		width: 2.9rem;
-		color: #55624f;
-		flex: none;
-	}
-	.home:hover {
-		color: #ff6b4a;
-	}
-	.home svg {
-		width: 1.3rem;
-		height: 1.3rem;
-	}
-	.campus-switch {
 		padding: 0.25rem;
 		gap: 0.15rem;
 	}

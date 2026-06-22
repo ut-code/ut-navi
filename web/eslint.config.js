@@ -31,4 +31,11 @@ export default defineConfig([
 			},
 		},
 	},
+	{
+		// no-navigation-without-resolve はテンプレートリテラル内の resolve() を追跡できず、
+		// クエリパラメータ付きリンク (/?campus=xxx) で誤検知する (Issue #1327)
+		rules: {
+			"svelte/no-navigation-without-resolve": ["error", { ignoreLinks: true }],
+		},
+	},
 ]);
