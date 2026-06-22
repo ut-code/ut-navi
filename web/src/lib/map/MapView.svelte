@@ -4,8 +4,9 @@
 	import "maplibre-gl/dist/maplibre-gl.css";
 	import { resolve } from "$app/paths";
 	import { BASE_STYLE, CAMPUSES, OSM_ATTRIBUTION, type CampusConfig } from "./campuses.ts";
+	import { isCampusId } from "$lib/data/campuses.ts";
 	import DetailPanel from "./DetailPanel.svelte";
-	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors.ts";
+	import { FLOOR_DATA, hasFloors, searchRooms, type RoomHit } from "$lib/data/floors/index.ts";
 
 	let { config }: { config: CampusConfig } = $props();
 
@@ -30,6 +31,9 @@
 	let selected = $state<Selected | null>(null);
 
 	// 建物名・部屋名検索
+	// 建物インデックスは現キャンパスの GeoJSON から構築するため、他キャンパスはヒットしない。
+	// 他キャンパスの建物も検索したい場合は FLOOR_DATA を補助インデックスとして使い、
+	// ヒット時は /?campus=xxx&building=relation/yyy で遷移 + ページロード時に flyTo する実装が必要
 	let buildings = $state<Building[]>([]);
 	let query = $state("");
 	let searchFocused = $state(false);
@@ -40,7 +44,10 @@
 			.filter((b) => b.name.toLowerCase().includes(q) || (b.en?.toLowerCase().includes(q) ?? false))
 			.slice(0, 6);
 	});
-	const roomResults = $derived(searchRooms(query, 6));
+	// config.id はページロード時に CampusId として検証済みだが CampusConfig.id は string 型
+	const roomResults = $derived(
+		searchRooms(query, 6, isCampusId(config.id) ? config.id : undefined),
+	);
 	// 空欄でフォーカスしたときの候補先出し。タイプ量ゼロで飛べるよう、
 	// 階層図など詳細データを持つ建物をクイックアクセスとして並べる
 	const suggestions = $derived(buildings.filter((b) => hasFloors(b.id)).slice(0, 8));

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BuildingFloors } from "$lib/data/floors.ts";
+	import type { BuildingFloors } from "$lib/data/floors/index.ts";
 
 	type Props = {
 		/** 選択中の建物の表示情報 (旧・情報カードの中身) */

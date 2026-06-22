@@ -56,6 +56,10 @@ export const CAMPUSES = {
 
 export type CampusId = keyof typeof CAMPUSES;
 
+export function isCampusId(id: string): id is CampusId {
+	return id in CAMPUSES;
+}
+
 export const CampusIdSchema = v.fallback(
 	v.picklist(Object.keys(CAMPUSES) as [CampusId, ...CampusId[]]),
 	"komaba" satisfies CampusId,
